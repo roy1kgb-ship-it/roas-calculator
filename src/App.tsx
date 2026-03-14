@@ -4,19 +4,27 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Calculator, DollarSign, Percent, TrendingUp, Info, Share2, Check, BarChart3, HelpCircle, Target, Printer, Globe, Trash2, Download, Zap } from 'lucide-react';
+import { Calculator, DollarSign, Percent, TrendingUp, Info, Share2, Check, BarChart3, HelpCircle, Target, Printer, Globe, Trash2, Download, Zap, PieChart as PieChartIcon, Users } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import CookieConsent from './components/CookieConsent';
 
 export default function App() {
   // --- State Management for Input Fields ---
+  const [calcMode, setCalcMode] = useState<'ecom' | 'leadgen'>('ecom');
+  
+  // E-com State
   const [sellPrice, setSellPrice] = useState<number>(() => Number(localStorage.getItem('roas_sellPrice')) || 100);
   const [cogs, setCogs] = useState<number>(() => Number(localStorage.getItem('roas_cogs')) || 25);
   const [shipping, setShipping] = useState<number>(() => Number(localStorage.getItem('roas_shipping')) || 10);
   const [cpa, setCpa] = useState<number>(() => Number(localStorage.getItem('roas_cpa')) || 20);
-  
-  // Advanced Features (The "Unfair Advantage")
   const [paymentFee, setPaymentFee] = useState<number>(() => Number(localStorage.getItem('roas_paymentFee')) || 2.9);
   const [returnRate, setReturnRate] = useState<number>(() => Number(localStorage.getItem('roas_returnRate')) || 5.0);
+  
+  // Lead Gen State
+  const [leadValue, setLeadValue] = useState<number>(() => Number(localStorage.getItem('roas_leadValue')) || 500);
+  const [cpc, setCpc] = useState<number>(() => Number(localStorage.getItem('roas_cpc')) || 2.50);
+  const [lpConvRate, setLpConvRate] = useState<number>(() => Number(localStorage.getItem('roas_lpConvRate')) || 15);
+  const [closeRate, setCloseRate] = useState<number>(() => Number(localStorage.getItem('roas_closeRate')) || 10);
   
   // Global Reach Feature
   const [currency, setCurrency] = useState<string>(() => localStorage.getItem('roas_currency') || '$');
@@ -38,24 +46,43 @@ export default function App() {
     localStorage.setItem('roas_cpa', cpa.toString());
     localStorage.setItem('roas_paymentFee', paymentFee.toString());
     localStorage.setItem('roas_returnRate', returnRate.toString());
+    
+    localStorage.setItem('roas_leadValue', leadValue.toString());
+    localStorage.setItem('roas_cpc', cpc.toString());
+    localStorage.setItem('roas_lpConvRate', lpConvRate.toString());
+    localStorage.setItem('roas_closeRate', closeRate.toString());
+    
     localStorage.setItem('roas_currency', currency);
 
-    // Advanced Math incorporating real-world e-commerce variables
-    const feeCost = sellPrice * (paymentFee / 100);
-    const returnCost = sellPrice * (returnRate / 100); // Simplified return cost impact
-    
-    const gp = sellPrice - cogs - shipping - feeCost - returnCost;
-    const gm = sellPrice > 0 ? (gp / sellPrice) * 100 : 0;
-    const beRoas = gp > 0 ? sellPrice / gp : 0;
-    const np = gp - cpa;
-    const nm = sellPrice > 0 ? (np / sellPrice) * 100 : 0;
+    if (calcMode === 'ecom') {
+      const feeCost = sellPrice * (paymentFee / 100);
+      const returnCost = sellPrice * (returnRate / 100);
+      const gp = sellPrice - cogs - shipping - feeCost - returnCost;
+      const gm = sellPrice > 0 ? (gp / sellPrice) * 100 : 0;
+      const beRoas = gp > 0 ? sellPrice / gp : 0;
+      const np = gp - cpa;
+      const nm = sellPrice > 0 ? (np / sellPrice) * 100 : 0;
 
-    setGrossProfit(gp);
-    setGrossMargin(gm);
-    setBreakEvenRoas(beRoas);
-    setNetProfit(np);
-    setNetMargin(nm);
-  }, [sellPrice, cogs, shipping, cpa, paymentFee, returnRate, currency]);
+      setGrossProfit(gp);
+      setGrossMargin(gm);
+      setBreakEvenRoas(beRoas);
+      setNetProfit(np);
+      setNetMargin(nm);
+    } else {
+      // Lead Gen Math
+      const costPerLead = lpConvRate > 0 ? cpc / (lpConvRate / 100) : 0;
+      const costPerAcquisition = closeRate > 0 ? costPerLead / (closeRate / 100) : 0;
+      const np = leadValue - costPerAcquisition;
+      const nm = leadValue > 0 ? (np / leadValue) * 100 : 0;
+      const beRoas = costPerAcquisition > 0 ? leadValue / costPerAcquisition : 0;
+      
+      setGrossProfit(leadValue); // For lead gen, gross is just the value
+      setGrossMargin(100);
+      setBreakEvenRoas(beRoas);
+      setNetProfit(np);
+      setNetMargin(nm);
+    }
+  }, [sellPrice, cogs, shipping, cpa, paymentFee, returnRate, leadValue, cpc, lpConvRate, closeRate, currency, calcMode]);
 
   const handleInput = (setter: React.Dispatch<React.SetStateAction<number>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
@@ -63,12 +90,19 @@ export default function App() {
   };
 
   const clearAll = () => {
-    setSellPrice(0);
-    setCogs(0);
-    setShipping(0);
-    setCpa(0);
-    setPaymentFee(0);
-    setReturnRate(0);
+    if (calcMode === 'ecom') {
+      setSellPrice(0);
+      setCogs(0);
+      setShipping(0);
+      setCpa(0);
+      setPaymentFee(0);
+      setReturnRate(0);
+    } else {
+      setLeadValue(0);
+      setCpc(0);
+      setLpConvRate(0);
+      setCloseRate(0);
+    }
   };
 
   const copyReport = () => {
@@ -123,12 +157,18 @@ export default function App() {
     document.body.removeChild(link);
   };
 
-  // Calculate percentages for the Revenue Breakdown Bar
+  // Calculate percentages for the Revenue Breakdown Chart
   const safeSellPrice = sellPrice > 0 ? sellPrice : 1;
-  const pctCogs = ((cogs + shipping) / safeSellPrice) * 100;
-  const pctFees = ((sellPrice * (paymentFee / 100) + sellPrice * (returnRate / 100)) / safeSellPrice) * 100;
-  const pctCpa = (cpa / safeSellPrice) * 100;
-  const pctProfit = Math.max(0, (netProfit / safeSellPrice) * 100);
+  const cogsShipCost = cogs + shipping;
+  const feesRetCost = (sellPrice * (paymentFee / 100)) + (sellPrice * (returnRate / 100));
+  const profitVal = Math.max(0, netProfit);
+  
+  const chartData = [
+    { name: 'COGS & Shipping', value: cogsShipCost, color: '#52525b' }, // zinc-600
+    { name: 'Fees & Returns', value: feesRetCost, color: '#71717a' }, // zinc-500
+    { name: 'Ad Spend (CPA)', value: cpa, color: '#a855f7' }, // purple-500
+    { name: 'Net Profit', value: profitVal, color: '#CCFF00' },
+  ].filter(item => item.value > 0);
 
   return (
     <div className="min-h-screen bg-[#0A0A0A] text-zinc-300 font-sans selection:bg-[#CCFF00]/30 pb-20 md:pb-8 flex flex-col items-center print:bg-white print:text-black">
@@ -145,12 +185,29 @@ export default function App() {
           
           {/* Header Section */}
           <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-            <div className="space-y-2">
+            <div className="space-y-4">
               <h1 className="text-3xl md:text-4xl font-semibold text-white tracking-tight flex items-start sm:items-center gap-3 print:text-black">
                 <Calculator className="w-8 h-8 text-[#CCFF00] print:text-black shrink-0 mt-1 sm:mt-0" />
                 <span>Advanced ROAS Calculator</span>
               </h1>
-              <p className="text-zinc-400 print:text-zinc-600">The most accurate e-commerce profit calculator. Includes fees & return rates.</p>
+              
+              {/* Calculator Mode Tabs */}
+              <div className="flex items-center gap-2 bg-[#141414] p-1 rounded-lg border border-[#2A2A2A] w-fit print:hidden">
+                <button
+                  onClick={() => setCalcMode('ecom')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'ecom' ? 'bg-[#2A2A2A] text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                >
+                  <Calculator className="w-4 h-4" />
+                  E-Commerce
+                </button>
+                <button
+                  onClick={() => setCalcMode('leadgen')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-semibold transition-colors ${calcMode === 'leadgen' ? 'bg-[#2A2A2A] text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                >
+                  <Users className="w-4 h-4" />
+                  Lead Gen
+                </button>
+              </div>
             </div>
             
             <div className="flex items-center gap-2 print:hidden flex-wrap">
@@ -212,92 +269,158 @@ export default function App() {
           {/* Inputs Grid Section */}
           <section id="calculator-inputs" className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6 bg-[#141414] border border-[#2A2A2A] rounded-xl shadow-2xl print:bg-white print:border-zinc-300 print:shadow-none">
             
-            <InputField 
-              label="Customer Sell Price" 
-              value={sellPrice} 
-              onChange={handleInput(setSellPrice)} 
-              currencySymbol={currency}
-              tooltip="The final price the customer pays for your product, including any markups. This is your top-line revenue per unit."
-            />
-            
-            <InputField 
-              label="Product Cost (COGS)" 
-              value={cogs} 
-              onChange={handleInput(setCogs)} 
-              currencySymbol={currency}
-              tooltip="Cost of Goods Sold: The direct costs attributable to the production of the goods sold, including manufacturing and packaging."
-            />
-            
-            <InputField 
-              label="Shipping Cost" 
-              value={shipping} 
-              onChange={handleInput(setShipping)} 
-              currencySymbol={currency}
-              tooltip="Total cost to ship the product to the customer, including postage, handling, and shipping materials."
-            />
-            
-            <InputField 
-              label="Cost Per Acquisition (CPA)" 
-              value={cpa} 
-              onChange={handleInput(setCpa)} 
-              currencySymbol={currency}
-              tooltip="Cost Per Acquisition: The total marketing and advertising spend required to acquire one paying customer."
-            />
+            {calcMode === 'ecom' ? (
+              <>
+                <InputField 
+                  label="Customer Sell Price" 
+                  value={sellPrice} 
+                  onChange={handleInput(setSellPrice)} 
+                  currencySymbol={currency}
+                  tooltip="The final price the customer pays for your product, including any markups. This is your top-line revenue per unit."
+                />
+                
+                <InputField 
+                  label="Product Cost (COGS)" 
+                  value={cogs} 
+                  onChange={handleInput(setCogs)} 
+                  currencySymbol={currency}
+                  tooltip="Cost of Goods Sold: The direct costs attributable to the production of the goods sold, including manufacturing and packaging."
+                />
+                
+                <InputField 
+                  label="Shipping Cost" 
+                  value={shipping} 
+                  onChange={handleInput(setShipping)} 
+                  currencySymbol={currency}
+                  tooltip="Total cost to ship the product to the customer, including postage, handling, and shipping materials."
+                />
+                
+                <InputField 
+                  label="Cost Per Acquisition (CPA)" 
+                  value={cpa} 
+                  onChange={handleInput(setCpa)} 
+                  currencySymbol={currency}
+                  tooltip="Cost Per Acquisition: The total marketing and advertising spend required to acquire one paying customer."
+                />
 
-            {/* Advanced Inputs */}
-            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[#2A2A2A] print:border-zinc-300">
-              <InputField 
-                label="Payment Processing Fee (%)" 
-                value={paymentFee} 
-                onChange={handleInput(setPaymentFee)} 
-                icon={<Percent className="w-4 h-4 text-zinc-500" />}
-                tooltip="Processing fees charged by gateways like Stripe, PayPal, or Shopify Payments (typically around 2.9% + $0.30)."
-              />
-              <InputField 
-                label="Estimated Return Rate (%)" 
-                value={returnRate} 
-                onChange={handleInput(setReturnRate)} 
-                icon={<Percent className="w-4 h-4 text-zinc-500" />}
-                tooltip="The estimated percentage of orders that are refunded or returned by customers, impacting your bottom line."
-              />
-            </div>
+                {/* Advanced Inputs */}
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[#2A2A2A] print:border-zinc-300">
+                  <InputField 
+                    label="Payment Processing Fee (%)" 
+                    value={paymentFee} 
+                    onChange={handleInput(setPaymentFee)} 
+                    icon={<Percent className="w-4 h-4 text-zinc-500" />}
+                    tooltip="Processing fees charged by gateways like Stripe, PayPal, or Shopify Payments (typically around 2.9% + $0.30)."
+                  />
+                  <InputField 
+                    label="Estimated Return Rate (%)" 
+                    value={returnRate} 
+                    onChange={handleInput(setReturnRate)} 
+                    icon={<Percent className="w-4 h-4 text-zinc-500" />}
+                    tooltip="The estimated percentage of orders that are refunded or returned by customers, impacting your bottom line."
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <InputField 
+                  label="Lifetime Value of a Lead (LTV)" 
+                  value={leadValue} 
+                  onChange={handleInput(setLeadValue)} 
+                  currencySymbol={currency}
+                  tooltip="The average total revenue a single closed lead brings to your business over their lifetime."
+                />
+                
+                <InputField 
+                  label="Cost Per Click (CPC)" 
+                  value={cpc} 
+                  onChange={handleInput(setCpc)} 
+                  currencySymbol={currency}
+                  tooltip="The average amount you pay for a single click on your ad."
+                />
+                
+                <InputField 
+                  label="Landing Page Conversion Rate (%)" 
+                  value={lpConvRate} 
+                  onChange={handleInput(setLpConvRate)} 
+                  icon={<Percent className="w-4 h-4 text-zinc-500" />}
+                  tooltip="The percentage of people who click your ad and actually submit their information to become a lead."
+                />
+                
+                <InputField 
+                  label="Lead to Sale Close Rate (%)" 
+                  value={closeRate} 
+                  onChange={handleInput(setCloseRate)} 
+                  icon={<Percent className="w-4 h-4 text-zinc-500" />}
+                  tooltip="The percentage of leads that your sales team successfully closes into paying customers."
+                />
+              </>
+            )}
           </section>
 
           {/* Revenue Breakdown Visualization (Unfair Advantage Feature) */}
-          <section id="revenue-breakdown" className="p-6 bg-[#141414] border border-[#2A2A2A] rounded-xl space-y-4 print:bg-white print:border-zinc-300">
-            <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2 print:text-zinc-800">
-              <BarChart3 className="w-4 h-4 text-[#CCFF00] print:text-black" />
-              Revenue Breakdown per {currency}100
-            </h3>
-            
-            {/* Stacked Bar */}
-            <div className="w-full h-8 flex rounded-md overflow-hidden bg-[#2A2A2A] print:border print:border-zinc-300">
-              <div style={{ width: `${pctCogs}%` }} className="bg-zinc-600 h-full transition-all duration-500 print:bg-zinc-300" title="COGS & Shipping"></div>
-              <div style={{ width: `${pctFees}%` }} className="bg-zinc-500 h-full transition-all duration-500 print:bg-zinc-400" title="Fees & Returns"></div>
-              <div style={{ width: `${pctCpa}%` }} className="bg-purple-500 h-full transition-all duration-500 print:bg-zinc-500" title="Marketing (CPA)"></div>
-              <div style={{ width: `${pctProfit}%` }} className="bg-[#CCFF00] h-full transition-all duration-500 print:bg-black" title="Net Profit"></div>
-            </div>
-            
-            {/* Legend */}
-            <div className="flex flex-wrap gap-4 text-xs font-mono text-zinc-400 print:text-zinc-800">
-              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-zinc-600 print:bg-zinc-300"></span> COGS & Ship</div>
-              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-zinc-500 print:bg-zinc-400"></span> Fees & Returns</div>
-              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500 print:bg-zinc-500"></span> Ad Spend</div>
-              <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#CCFF00] print:bg-black"></span> Profit</div>
-            </div>
-          </section>
+          {calcMode === 'ecom' && (
+            <section id="revenue-breakdown" className="p-6 bg-[#141414] border border-[#2A2A2A] rounded-xl space-y-4 print:bg-white print:border-zinc-300">
+              <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-2 print:text-zinc-800">
+                <PieChartIcon className="w-4 h-4 text-[#CCFF00] print:text-black" />
+                Revenue Breakdown per Unit
+              </h3>
+              
+              <div className="flex flex-col md:flex-row items-center gap-8">
+                {/* Donut Chart */}
+                <div className="w-48 h-48 shrink-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={chartData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={2}
+                        dataKey="value"
+                        stroke="none"
+                      >
+                        {chartData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <RechartsTooltip 
+                        formatter={(value: number) => [`${currency}${value.toFixed(2)}`, '']}
+                        contentStyle={{ backgroundColor: '#2A2A2A', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px' }}
+                        itemStyle={{ color: '#fff' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                {/* Legend */}
+                <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  {chartData.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-[#0A0A0A] rounded-lg border border-[#2A2A2A] print:bg-zinc-50 print:border-zinc-200">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></span>
+                        <span className="text-zinc-300 print:text-zinc-700">{item.name}</span>
+                      </div>
+                      <span className="font-mono font-semibold text-white print:text-black">{currency}{item.value.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Results Grid Section */}
           <section id="calculator-results" className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <ResultCard 
-              title="Max Target CPA (Break-even)" 
-              value={`${currency}${grossProfit.toFixed(2)}`} 
+              title={calcMode === 'ecom' ? "Max Target CPA" : "Cost Per Acquisition"} 
+              value={calcMode === 'ecom' ? `${currency}${grossProfit.toFixed(2)}` : `${currency}${(leadValue - netProfit).toFixed(2)}`} 
               icon={<DollarSign className="w-5 h-5 text-[#CCFF00] print:text-black" />} 
             />
             <ResultCard 
-              title="True Gross Margin" 
-              value={`${grossMargin.toFixed(1)}%`} 
-              icon={<Percent className="w-5 h-5 text-[#CCFF00] print:text-black" />} 
+              title={calcMode === 'ecom' ? "True Gross Margin" : "Lead Value (LTV)"} 
+              value={calcMode === 'ecom' ? `${grossMargin.toFixed(1)}%` : `${currency}${leadValue.toFixed(2)}`} 
+              icon={calcMode === 'ecom' ? <Percent className="w-5 h-5 text-[#CCFF00] print:text-black" /> : <DollarSign className="w-5 h-5 text-[#CCFF00] print:text-black" />} 
             />
             <ResultCard 
               title="Break-even ROAS" 
@@ -313,7 +436,7 @@ export default function App() {
             </div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider print:text-zinc-800">Net Profit (Per Unit)</h3>
+                <h3 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider print:text-zinc-800">Net Profit {calcMode === 'ecom' ? '(Per Unit)' : '(Per Closed Deal)'}</h3>
                 <span className={`text-xs font-mono px-2 py-1 rounded print:bg-zinc-100 print:text-black ${netProfit > 0 ? 'bg-[#CCFF00]/20 text-[#CCFF00]' : 'bg-red-500/20 text-red-500'}`}>
                   {netMargin.toFixed(1)}% Margin
                 </span>

@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Calculator, DollarSign, Percent, TrendingUp, Info, Share2, Check, BarChart3, HelpCircle, Target, Printer, Globe } from 'lucide-react';
+import CookieConsent from './components/CookieConsent';
 
 export default function App() {
   // --- State Management for Input Fields ---
@@ -355,6 +356,7 @@ export default function App() {
         <span className="text-zinc-600 text-xs font-mono uppercase tracking-widest">Mobile Anchor Ad (320x50)</span>
       </div>
 
+      <CookieConsent />
     </div>
   );
 }

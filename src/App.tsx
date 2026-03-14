@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Calculator, DollarSign, Percent, TrendingUp, Info, Share2, Check, BarChart3, HelpCircle, Target, Printer, Globe, Trash2 } from 'lucide-react';
+import { Calculator, DollarSign, Percent, TrendingUp, Info, Share2, Check, BarChart3, HelpCircle, Target, Printer, Globe, Trash2, Download, Zap } from 'lucide-react';
 import CookieConsent from './components/CookieConsent';
 
 export default function App() {
@@ -94,6 +94,35 @@ export default function App() {
     window.print();
   };
 
+  const exportCSV = () => {
+    const headers = ['Metric', 'Value'];
+    const rows = [
+      ['Sell Price', `${currency}${sellPrice}`],
+      ['COGS', `${currency}${cogs}`],
+      ['Shipping', `${currency}${shipping}`],
+      ['CPA', `${currency}${cpa}`],
+      ['Payment Fee (%)', `${paymentFee}%`],
+      ['Return Rate (%)', `${returnRate}%`],
+      ['Gross Profit', `${currency}${grossProfit.toFixed(2)}`],
+      ['Gross Margin (%)', `${grossMargin.toFixed(1)}%`],
+      ['Break-even ROAS', `${breakEvenRoas.toFixed(2)}x`],
+      ['Net Profit', `${currency}${netProfit.toFixed(2)}`],
+      ['Net Margin (%)', `${netMargin.toFixed(1)}%`]
+    ];
+    
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(",") + "\n" 
+      + rows.map(e => e.join(",")).join("\n");
+      
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "roas_report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Calculate percentages for the Revenue Breakdown Bar
   const safeSellPrice = sellPrice > 0 ? sellPrice : 1;
   const pctCogs = ((cogs + shipping) / safeSellPrice) * 100;
@@ -115,18 +144,18 @@ export default function App() {
         <div className="lg:col-span-8 space-y-8 print:w-full">
           
           {/* Header Section */}
-          <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
             <div className="space-y-2">
-              <h1 className="text-3xl md:text-4xl font-semibold text-white tracking-tight flex items-center gap-3 print:text-black">
-                <Calculator className="w-8 h-8 text-[#CCFF00] print:text-black" />
-                Advanced ROAS Calculator
+              <h1 className="text-3xl md:text-4xl font-semibold text-white tracking-tight flex items-start sm:items-center gap-3 print:text-black">
+                <Calculator className="w-8 h-8 text-[#CCFF00] print:text-black shrink-0 mt-1 sm:mt-0" />
+                <span>Advanced ROAS Calculator</span>
               </h1>
               <p className="text-zinc-400 print:text-zinc-600">The most accurate e-commerce profit calculator. Includes fees & return rates.</p>
             </div>
             
-            <div className="flex items-center gap-2 print:hidden flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-2 print:hidden flex-wrap">
               {/* Currency Selector */}
-              <div className="relative flex items-center bg-[#141414] border border-[#2A2A2A] rounded-lg px-3 py-2">
+              <div className="relative flex items-center bg-[#141414] border border-[#2A2A2A] rounded-lg px-3 py-2 shrink-0">
                 <Globe className="w-4 h-4 text-zinc-500 mr-2" />
                 <select 
                   value={currency} 
@@ -160,12 +189,22 @@ export default function App() {
               </button>
 
               <button 
+                onClick={exportCSV}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-[#141414] hover:bg-[#2A2A2A] border border-[#2A2A2A] text-zinc-300 rounded-lg transition-colors text-sm font-semibold uppercase tracking-wider shrink-0"
+                title="Export as CSV"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">CSV</span>
+              </button>
+
+              <button 
                 id="btn-copy-report"
                 onClick={copyReport}
                 className="flex items-center justify-center gap-2 px-4 py-2 bg-[#CCFF00] hover:bg-[#b3e600] text-black rounded-lg transition-colors text-sm font-bold uppercase tracking-wider shrink-0"
               >
                 {copied ? <Check className="w-4 h-4" /> : <Share2 className="w-4 h-4" />}
-                {copied ? 'Copied!' : 'Copy'}
+                <span className="hidden sm:inline">{copied ? 'Copied!' : 'Copy'}</span>
+                <span className="sm:hidden">{copied ? 'Done' : 'Copy'}</span>
               </button>
             </div>
           </header>
@@ -178,7 +217,7 @@ export default function App() {
               value={sellPrice} 
               onChange={handleInput(setSellPrice)} 
               currencySymbol={currency}
-              tooltip="The final price the customer pays for your product."
+              tooltip="The final price the customer pays for your product, including any markups. This is your top-line revenue per unit."
             />
             
             <InputField 
@@ -186,7 +225,7 @@ export default function App() {
               value={cogs} 
               onChange={handleInput(setCogs)} 
               currencySymbol={currency}
-              tooltip="Cost of Goods Sold: Manufacturing, packaging, etc."
+              tooltip="Cost of Goods Sold: The direct costs attributable to the production of the goods sold, including manufacturing and packaging."
             />
             
             <InputField 
@@ -194,7 +233,7 @@ export default function App() {
               value={shipping} 
               onChange={handleInput(setShipping)} 
               currencySymbol={currency}
-              tooltip="Total cost to ship the product to the customer."
+              tooltip="Total cost to ship the product to the customer, including postage, handling, and shipping materials."
             />
             
             <InputField 
@@ -202,7 +241,7 @@ export default function App() {
               value={cpa} 
               onChange={handleInput(setCpa)} 
               currencySymbol={currency}
-              tooltip="Total marketing spend required to acquire one customer."
+              tooltip="Cost Per Acquisition: The total marketing and advertising spend required to acquire one paying customer."
             />
 
             {/* Advanced Inputs */}
@@ -212,14 +251,14 @@ export default function App() {
                 value={paymentFee} 
                 onChange={handleInput(setPaymentFee)} 
                 icon={<Percent className="w-4 h-4 text-zinc-500" />}
-                tooltip="Stripe, PayPal, or Shopify Payments fee (usually 2.9%)."
+                tooltip="Processing fees charged by gateways like Stripe, PayPal, or Shopify Payments (typically around 2.9% + $0.30)."
               />
               <InputField 
                 label="Estimated Return Rate (%)" 
                 value={returnRate} 
                 onChange={handleInput(setReturnRate)} 
                 icon={<Percent className="w-4 h-4 text-zinc-500" />}
-                tooltip="Percentage of orders that are refunded/returned."
+                tooltip="The estimated percentage of orders that are refunded or returned by customers, impacting your bottom line."
               />
             </div>
           </section>
@@ -327,6 +366,19 @@ export default function App() {
         {/* Right Column: Sidebar */}
         <aside className="lg:col-span-4 space-y-8 print:hidden">
           
+          {/* Standardized CTA Button */}
+          <a href="https://impact.com/" target="_blank" rel="noopener noreferrer" className="block w-full p-4 bg-[#141414] border border-[#CCFF00]/30 hover:border-[#CCFF00] hover:bg-[#CCFF00]/5 text-white rounded-xl transition-all duration-200 group">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-[#CCFF00]/10 rounded-lg group-hover:bg-[#CCFF00]/20 transition-colors">
+                <Zap className="w-5 h-5 text-[#CCFF00]" />
+              </div>
+              <div className="text-left">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-white mb-0.5">Boost Your ROAS</h3>
+                <p className="text-xs text-zinc-400">Explore top marketing tools</p>
+              </div>
+            </div>
+          </a>
+
           {/* --- MONETIZATION SPOT 2: Sidebar Top (300x250) --- */}
           <div id="ad-sidebar-top" className="w-full h-[250px] bg-[#141414] border border-[#2A2A2A] border-dashed rounded-xl flex items-center justify-center shrink-0">
             <div className="text-center space-y-2">
@@ -387,9 +439,9 @@ function InputField({ label, value, onChange, icon, currencySymbol, tooltip }: {
         <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider print:text-zinc-800">{label}</label>
         <div className="group relative cursor-help print:hidden">
           <Info className="w-4 h-4 text-zinc-600 hover:text-[#CCFF00] transition-colors" />
-          <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-[#2A2A2A] text-xs text-zinc-200 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl border border-[#3A3A3A] pointer-events-none">
+          <div className="absolute bottom-full right-0 sm:left-1/2 sm:-translate-x-1/2 mb-2 w-56 sm:w-64 p-3 bg-[#2A2A2A] text-xs text-zinc-200 rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10 shadow-xl border border-[#3A3A3A] pointer-events-none">
             {tooltip}
-            <div className="absolute top-full right-1.5 border-4 border-transparent border-t-[#2A2A2A]"></div>
+            <div className="absolute top-full right-1.5 sm:left-1/2 sm:-translate-x-1/2 sm:ml-[-4px] border-4 border-transparent border-t-[#2A2A2A]"></div>
           </div>
         </div>
       </div>

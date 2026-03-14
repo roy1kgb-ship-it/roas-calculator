@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Calculator, DollarSign, Percent, TrendingUp, Info, Share2, Check, BarChart3, HelpCircle, Target, Printer, Globe } from 'lucide-react';
+import { Calculator, DollarSign, Percent, TrendingUp, Info, Share2, Check, BarChart3, HelpCircle, Target, Printer, Globe, Trash2 } from 'lucide-react';
 import CookieConsent from './components/CookieConsent';
 
 export default function App() {
@@ -62,6 +62,15 @@ export default function App() {
     setter(isNaN(val) ? 0 : val);
   };
 
+  const clearAll = () => {
+    setSellPrice(0);
+    setCogs(0);
+    setShipping(0);
+    setCpa(0);
+    setPaymentFee(0);
+    setReturnRate(0);
+  };
+
   const copyReport = () => {
     const report = `📊 Advanced E-Commerce Profitability Report\n\n` +
       `Inputs:\n` +
@@ -115,7 +124,7 @@ export default function App() {
               <p className="text-zinc-400 print:text-zinc-600">The most accurate e-commerce profit calculator. Includes fees & return rates.</p>
             </div>
             
-            <div className="flex items-center gap-2 print:hidden">
+            <div className="flex items-center gap-2 print:hidden flex-wrap sm:flex-nowrap">
               {/* Currency Selector */}
               <div className="relative flex items-center bg-[#141414] border border-[#2A2A2A] rounded-lg px-3 py-2">
                 <Globe className="w-4 h-4 text-zinc-500 mr-2" />
@@ -131,6 +140,15 @@ export default function App() {
                   <option value="C$" className="bg-[#141414] text-zinc-300">CAD (C$)</option>
                 </select>
               </div>
+
+              <button 
+                onClick={clearAll}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-[#141414] hover:bg-[#2A2A2A] border border-[#2A2A2A] text-zinc-300 rounded-lg transition-colors text-sm font-semibold uppercase tracking-wider shrink-0"
+                title="Clear All Fields"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Clear</span>
+              </button>
 
               <button 
                 onClick={printReport}
